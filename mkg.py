@@ -8,10 +8,11 @@ import sys
 import shutil
 import platform
 from datetime import datetime
-
+#
 # ============================================================================
 # КЛАСС ДЛЯ ГЕНЕРАЦИИ ЛИЦЕНЗИЙ
 # ============================================================================
+#
 class LicenseGenerator:
     """Класс для генерации лицензий MobaXterm"""
     
@@ -104,11 +105,11 @@ class LicenseGenerator:
             return True, filename
         except Exception as e:
             return False, f"Ошибка: {e}"
-
-
+#
 # ============================================================================
 # ГЛАВНОЕ ПРИЛОЖЕНИЕ
 # ============================================================================
+#
 class MobaXtermGeneratorApp:
     def __init__(self, page: ft.Page):
         self.page = page
@@ -304,7 +305,7 @@ class MobaXtermGeneratorApp:
             read_only=True,
             border_color="#9C27B0",
             prefix_icon=ft.icons.VPN_KEY,
-            width=300,
+            width=430,
         )
         
         # 4. КНОПКИ ДЕЙСТВИЙ
@@ -452,11 +453,11 @@ class MobaXtermGeneratorApp:
     def _get_platform_info(self):
         """Информация в зависимости от платформы"""
         return "MobaXterm работает только на Windows:\n1. Сгенерируйте ключ\n2. Сохраните файл .mxtpro\n3. Используйте на Windows"
-    
+    #
     # ============================================================================
     # ОБРАБОТЧИКИ СОБЫТИЙ
     # ============================================================================
-    
+    #
     def update_status(self, message, color=None):
         """Обновление статуса"""
         if color is None:
@@ -689,11 +690,11 @@ class MobaXtermGeneratorApp:
             self.update_status(f"❌ Ошибка: {str(ex)}", self.styles['error'])
         
         self.page.update()
-
-
+#
 # ============================================================================
 # ЗАПУСК
 # ============================================================================
+#
 def main(page: ft.Page):
     """Главная функция"""
     # Настройки окна
