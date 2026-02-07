@@ -8,7 +8,7 @@ import sys
 import shutil
 import platform
 from datetime import datetime
-#
+
 # ============================================================================
 # КЛАСС ДЛЯ ГЕНЕРАЦИИ ЛИЦЕНЗИЙ
 # ============================================================================
@@ -104,144 +104,150 @@ class LicenseGenerator:
             return True, filename
         except Exception as e:
             return False, f"Ошибка: {e}"
-#
+
+
 # ============================================================================
 # ГЛАВНОЕ ПРИЛОЖЕНИЕ
 # ============================================================================
-#
 class MobaXtermGeneratorApp:
     def __init__(self, page: ft.Page):
         self.page = page
-        self.setup_page()
+        self._is_windows = platform.system() == "Windows"
         self.generated_key = None
         self.license_file = "MobaXterm_License.mxtpro"
         
-        # Определяем ОС
-        self.current_os = platform.system()
-        self.is_windows = self.current_os == "Windows"
-        self.is_mac = self.current_os == "Darwin"
-        self.is_linux = self.current_os == "Linux"
-        
-        # Инициализация
+        self._setup_styles()
+        self.setup_page()
         self.init_components()
+        
+    def _setup_styles(self):
+        """Определение стилей для повторного использования"""
+        self.styles = {
+            'bg_primary': "#1a1a1a",
+            'bg_secondary': "#252525",
+            'bg_field': "#2a2a2a",
+            'accent': "#00BCD4",
+            'success': "#4CAF50",
+            'warning': "#FF9800",
+            'error': "#F44336",
+            'info': "#2196F3",
+            'text_primary': "#E0E0E0",
+            'text_secondary': "#AAAAAA",
+            'border_color': "#333",
+        }
         
     def setup_page(self):
         """Настройка страницы"""
         self.page.title = "MobaXterm Key Gen"
         self.page.theme_mode = ft.ThemeMode.DARK
         self.page.window_width = 520
-        self.page.window_height = 700
+        self.page.window_height = 650
         self.page.window_resizable = False
-        self.page.padding = 10
-        self.page.bgcolor = "#1a1a1a"
-        self.page.scroll = ft.ScrollMode.AUTO  # Включаем прокрутку
+        self.page.padding = 15
+        self.page.bgcolor = self.styles['bg_primary']
+        self.page.scroll = ft.ScrollMode.AUTO
         
     def init_components(self):
         """Инициализация компонентов"""
         
         # Заголовок
-        header = ft.Container(
-            content=ft.Column([
-                ft.Row([
-                    ft.Icon(ft.icons.TERMINAL, size=28, color="#00BCD4"),
-                    ft.Text("MobaXterm Key Gen by @hakatao", size=20, weight=ft.FontWeight.BOLD),
-                ], alignment=ft.MainAxisAlignment.CENTER),
-                ft.Text(self.get_os_message(), 
-                       size=10, color="#AAAAAA", text_align=ft.TextAlign.CENTER),
-                ft.Divider(height=1, color="#333", thickness=1),
-            ], spacing=5, horizontal_alignment=ft.CrossAxisAlignment.CENTER),
-            bgcolor="#252525",
-            padding=12,
-            border_radius=8,
-            margin=ft.margin.only(bottom=10),
-        )
+        header = self._create_header()
         
         # Основное содержимое
-        main_content = self.create_main_content()
+        main_content = self._create_main_content()
         
         # Статус бар
+        status_bar = self._create_status_bar()
+        
+        # Главный контейнер
+        self.page.add(
+            ft.Column([
+                header,
+                main_content,
+                status_bar,
+            ], spacing=15)
+        )
+    
+    def _create_header(self):
+        """Создание заголовка"""
+        os_icon = ft.icons.WINDOWS if self._is_windows else ft.icons.COMPUTER
+        os_color = "#4CAF50" if self._is_windows else "#FF9800"
+        os_text = "Windows" if self._is_windows else "Другая ОС"
+        
+        return ft.Container(
+            content=ft.Column([
+                ft.Row([
+                    ft.Icon(ft.icons.TERMINAL, size=28, color=self.styles['accent']),
+                    ft.Text("MobaXterm Key Gen by @hakatao", size=20, weight=ft.FontWeight.BOLD),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+                ft.Row([
+                    ft.Icon(os_icon, size=14, color=os_color),
+                    ft.Container(width=5),
+                    ft.Text(f"{os_text} • {self._get_os_message()}", 
+                           size=11, color=self.styles['text_secondary']),
+                ], alignment=ft.MainAxisAlignment.CENTER),
+            ], horizontal_alignment=ft.CrossAxisAlignment.CENTER),
+            bgcolor=self.styles['bg_secondary'],
+            padding=12,
+            border_radius=8,
+        )
+    
+    def _get_os_message(self):
+        """Получение сообщения в зависимости от ОС"""
+        return "MobaXterm найден" if self._is_windows else "Только для Windows"
+    
+    def _create_status_bar(self):
+        """Создание статус-бара"""
         self.status_text = ft.Text(
-            self.get_initial_status(),
+            self._get_initial_status(),
             size=11,
-            color=self.get_status_color(),
+            color=self._get_status_color(),
         )
         
-        status_bar = ft.Container(
+        return ft.Container(
             content=ft.Row([
-                ft.Icon(ft.icons.CIRCLE, size=8, color=self.get_status_color()),
+                ft.Icon(ft.icons.CIRCLE, size=8, color=self._get_status_color()),
                 ft.Container(width=6),
                 self.status_text,
             ]),
-            bgcolor="#252525",
-            padding=8,
+            bgcolor=self.styles['bg_secondary'],
+            padding=10,
             border_radius=6,
-            margin=ft.margin.only(top=10),
-        )
-        
-        # Главный контейнер с фиксированной высотой и прокруткой
-        scrollable_content = ft.Container(
-            content=ft.Column(
-                [
-                    header,
-                    main_content,
-                    status_bar,
-                ],
-                spacing=0,
-            ),
-            # Ограничиваем максимальную высоту и включаем прокрутку
-            height=1000,  # Фиксированная высота
-        )
-        
-        # Главный контейнер с прокруткой
-        self.page.add(
-            ft.Container(
-                content=scrollable_content,
-                # Убираем expand, чтобы не занимало всю высоту
-            )
         )
     
-    def get_os_message(self):
-        """Сообщение в зависимости от ОС"""
-        if self.is_windows:
-            return f"Windows • MobaXterm найден"
-        elif self.is_mac:
-            return f"MacOS • MobaXterm работает только на Windows"
-        else:
-            return f"Linux • MobaXterm работает только на Windows"
-    
-    def get_initial_status(self):
+    def _get_initial_status(self):
         """Получение начального статуса"""
-        if self.is_windows:
-            return "Готов к работе. Заполните все поля и нажмите 'Генерировать'"
-        else:
-            return "Заполните все поля для генерации ключа"
+        return "Готов к работе. Заполните поля и нажмите 'Генерировать'" if self._is_windows else "Заполните поля для генерации ключа"
     
-    def get_status_color(self):
+    def _get_status_color(self):
         """Получение цвета статуса"""
-        return "#4CAF50" if self.is_windows else "#FF9800"
+        return self.styles['success'] if self._is_windows else self.styles['warning']
     
-    def create_main_content(self):
-        """Создание основного содержимого"""
-        
-        # Стиль для полей ввода
-        field_style = {
-            "border_color": "#00BCD4",
+    def _create_input_field(self, **kwargs):
+        """Создание поля ввода со стандартными стилями"""
+        default_style = {
+            "border_color": self.styles['accent'],
             "border_radius": 6,
-            "bgcolor": "#2a2a2a",
+            "bgcolor": self.styles['bg_field'],
             "text_size": 12,
             "color": "white",
             "height": 45,
-            "label_style": ft.TextStyle(size=10, color="#E0E0E0"),
+            "label_style": ft.TextStyle(size=10, color=self.styles['text_primary']),
+            "content_padding": 10,
+            "width": 200,
         }
+        default_style.update(kwargs)
+        return ft.TextField(**default_style)
+    
+    def _create_main_content(self):
+        """Создание основного содержимого"""
         
         # 1. ПОЛЯ ВВОДА
-        self.username_field = ft.TextField(
+        self.username_field = self._create_input_field(
             label="Имя пользователя *",
             hint_text="Введите ваше имя",
             value="BroVnature",
             prefix_icon=ft.icons.PERSON,
-            width=200,
-            **field_style
         )
         
         self.license_type_dropdown = ft.Dropdown(
@@ -254,25 +260,28 @@ class MobaXtermGeneratorApp:
             value="Professional",
             prefix_icon=ft.icons.CREDIT_CARD,
             width=200,
-            **field_style
+            border_color=self.styles['accent'],
+            border_radius=6,
+            bgcolor=self.styles['bg_field'],
+            text_size=12,
+            color="white",
+            label_style=ft.TextStyle(size=10, color=self.styles['text_primary']),
+            height=45,
+            content_padding=10,
         )
         
-        self.version_field = ft.TextField(
+        self.version_field = self._create_input_field(
             label="Версия MobaXterm *",
             hint_text="Например: 25.4",
             value="25.4",
             prefix_icon=ft.icons.TAG,
-            width=200,
-            **field_style
         )
         
-        self.user_count_field = ft.TextField(
+        self.user_count_field = self._create_input_field(
             label="Количество лицензий *",
             hint_text="Например: 1",
             value="99",
             prefix_icon=ft.icons.PEOPLE,
-            width=200,
-            **field_style
         )
         
         # 2. КНОПКА ГЕНЕРАЦИИ
@@ -281,35 +290,21 @@ class MobaXtermGeneratorApp:
             icon=ft.icons.AUTO_FIX_HIGH,
             on_click=self.validate_and_generate,
             style=ft.ButtonStyle(
-                bgcolor="#00BCD4",
+                bgcolor=self.styles['accent'],
                 color="white",
                 padding=15,
                 shape=ft.RoundedRectangleBorder(radius=6),
             ),
-            width=250,
-        )
-        
-        self.progress_ring = ft.ProgressRing(
-            width=24,
-            height=24,
-            stroke_width=3,
-            visible=False,
-            color="#00BCD4",
+            width=300,
         )
         
         # 3. ПОЛЕ РЕЗУЛЬТАТА
-        self.key_display = ft.TextField(
+        self.key_display = self._create_input_field(
             label="Лицензионный ключ",
-            multiline=False,
-            min_lines=1,
-            max_lines=1,
             read_only=True,
             border_color="#9C27B0",
-            bgcolor="#2a2a2a",
-            border_radius=6,
             prefix_icon=ft.icons.VPN_KEY,
-            text_size=11,
-            color="white",
+            width=300,
         )
         
         # 4. КНОПКИ ДЕЙСТВИЙ
@@ -319,14 +314,14 @@ class MobaXtermGeneratorApp:
                 icon=ft.icons.CONTENT_COPY,
                 on_click=self.copy_key,
                 style=ft.ButtonStyle(
-                    bgcolor="#2196F3",
+                    bgcolor=self.styles['info'],
                     color="white",
                     padding=15,
                 ),
-                width=110,
+                width=140,
             ),
             ft.ElevatedButton(
-                text="File",
+                text="Save",
                 icon=ft.icons.SAVE,
                 on_click=self.save_license,
                 style=ft.ButtonStyle(
@@ -334,63 +329,39 @@ class MobaXtermGeneratorApp:
                     color="white",
                     padding=15,
                 ),
-                width=110,
+                width=140,
             ),
-            ft.ElevatedButton(
-                text="Установить" if self.is_windows else "Только Win",
-                icon=ft.icons.INSTALL_DESKTOP if self.is_windows else ft.icons.LOCK,
-                on_click=self.install_license,
-                style=ft.ButtonStyle(
-                    bgcolor="#4CAF50" if self.is_windows else "#666",
-                    color="white",
-                    padding=10,
-                ),
-                width=110,
-                disabled=not self.is_windows,
-            ),
-        ], alignment=ft.MainAxisAlignment.CENTER, spacing=5)
+        ], alignment=ft.MainAxisAlignment.CENTER, spacing=20)
         
         # 5. ИНФОРМАЦИЯ О ФАЙЛЕ
         self.file_info_text = ft.Text(
             "Файл лицензии не создан",
             size=11,
-            color="#AAAAAA",
+            color=self.styles['text_secondary'],
         )
         
-        # 6. КНОПКИ УТИЛИТ
-        util_buttons = ft.Row([
-            ft.ElevatedButton(
-                text="Проверить файл",
-                icon=ft.icons.CHECK_CIRCLE,
-                on_click=self.check_license_file,
-                style=ft.ButtonStyle(
-                    bgcolor="#FF9800",
-                    color="white",
-                    padding=8,
-                ),
-                width=120,
+        # 6. КНОПКА УТИЛИТЫ
+        util_button = ft.ElevatedButton(
+            text="Открыть папку",
+            icon=ft.icons.FOLDER_OPEN,
+            on_click=self.open_license_folder,
+            style=ft.ButtonStyle(
+                bgcolor=self.styles['warning'],
+                color="white",
+                padding=10,
             ),
-            ft.ElevatedButton(
-                text="Открыть папку",
-                icon=ft.icons.FOLDER_OPEN,
-                on_click=self.open_license_folder,
-                style=ft.ButtonStyle(
-                    bgcolor="#607D8B",
-                    color="white",
-                    padding=8,
-                ),
-                width=120,
-            ),
-        ], alignment=ft.MainAxisAlignment.CENTER, spacing=10)
+            width=300,
+        )
         
         # Собираем всё
         content = ft.Column([
             # Секция настроек
             ft.Container(
                 content=ft.Column([
-                    ft.Text("Настройки генерации:", size=14, weight=ft.FontWeight.BOLD, color="#E0E0E0"),
-                    ft.Text("(*) - обязательные поля", size=10, color="#FF9800"),
-                    ft.Divider(height=5, color="transparent"),
+                    ft.Text("Настройки генерации:", size=14, weight=ft.FontWeight.BOLD, 
+                           color=self.styles['text_primary']),
+                    ft.Text("(*) - обязательные поля", size=10, color=self.styles['warning']),
+                    ft.Divider(height=10, color="transparent"),
                     
                     ft.Row([
                         self.username_field,
@@ -406,112 +377,106 @@ class MobaXtermGeneratorApp:
                         self.user_count_field,
                     ], alignment=ft.MainAxisAlignment.CENTER),
                     
-                    ft.Divider(height=10, color="transparent"),
+                    ft.Divider(height=15, color="transparent"),
                     
-                    ft.Row([
-                        self.generate_btn,
-                        ft.Container(width=10),
-                        self.progress_ring,
-                    ], alignment=ft.MainAxisAlignment.CENTER),
-
-                    ft.Divider(height=5, color="transparent"),
+                    ft.Row([self.generate_btn], alignment=ft.MainAxisAlignment.CENTER),
                 ]),
-                padding=15,
-                bgcolor="#252525",
+                padding=20,
+                bgcolor=self.styles['bg_secondary'],
                 border_radius=8,
-                margin=ft.margin.only(bottom=10),
             ),
             
             # Секция результата
             ft.Container(
                 content=ft.Column([
-                    ft.Text("Сгенерированный ключ:", size=14, weight=ft.FontWeight.BOLD, color="#E0E0E0"),
+                    ft.Text("Сгенерированный ключ:", size=14, weight=ft.FontWeight.BOLD, 
+                           color=self.styles['text_primary']),
                     ft.Divider(height=10, color="transparent"),
                     
-                    self.key_display,
+                    ft.Row([self.key_display], alignment=ft.MainAxisAlignment.CENTER),
                     
                     ft.Divider(height=15, color="transparent"),
                     
                     action_buttons,
                 ]),
-                padding=15,
-                bgcolor="#252525",
+                padding=20,
+                bgcolor=self.styles['bg_secondary'],
                 border_radius=8,
-                margin=ft.margin.only(bottom=10),
             ),
             
-            # Секция информации
+            # Секция информации и утилит
             ft.Container(
                 content=ft.Column([
                     ft.Row([
-                        ft.Icon(ft.icons.INSERT_DRIVE_FILE, size=20, color="#2196F3"),
+                        ft.Icon(ft.icons.INSERT_DRIVE_FILE, size=20, color=self.styles['info']),
                         ft.Container(width=8),
                         ft.Column([
-                            ft.Text("MobaXterm_License.mxtpro", size=12, color="#E0E0E0"),
+                            ft.Text("MobaXterm_License.mxtpro", size=12, 
+                                   color=self.styles['text_primary']),
                             self.file_info_text,
                         ], spacing=2),
                     ]),
                     
-                    ft.Divider(height=15, color="#333"),
+                    ft.Divider(height=15, color=self.styles['border_color']),
                     
                     # Информация для не-Windows
                     ft.Container(
                         content=ft.Column([
                             ft.Row([
-                                ft.Icon(ft.icons.INFO, size=18, color="#FF9800"),
+                                ft.Icon(ft.icons.INFO, size=18, color=self.styles['warning']),
                                 ft.Container(width=8),
-                                ft.Text("Информация:", size=12, weight=ft.FontWeight.BOLD, color="#FF9800"),
+                                ft.Text("Внимание:", size=12, weight=ft.FontWeight.BOLD, 
+                                       color=self.styles['warning']),
                             ]),
-                            ft.Text(self.get_platform_info(), size=11, color="#AAAAAA"),
+                            ft.Text(self._get_platform_info(), size=11, 
+                                   color=self.styles['text_secondary']),
                         ], spacing=5),
-                        bgcolor="#332200" if not self.is_windows else "#1B5E20",
-                        padding=10,
+                        bgcolor="#332200",
+                        padding=12,
                         border_radius=6,
-                        visible=not self.is_windows,
+                        visible=not self._is_windows,
                     ),
                     
-                    ft.Divider(height=15, color="#333"),
+                    ft.Divider(height=20, color=self.styles['border_color']),
                     
-                    util_buttons,
-                    
-                    ft.Divider(height=10, color="transparent"),
-                    
-                    # Дополнительный отступ внизу
-                    ft.Container(height=10),
+                    ft.Row([util_button], alignment=ft.MainAxisAlignment.CENTER),
                 ]),
-                padding=15,
-                bgcolor="#252525",
+                padding=20,
+                bgcolor=self.styles['bg_secondary'],
                 border_radius=8,
             ),
-        ], spacing=0)
+        ], spacing=15)
         
         return content
     
-    def get_platform_info(self):
+    def _get_platform_info(self):
         """Информация в зависимости от платформы"""
-        if self.is_windows:
-            return "MobaXterm найден на вашем компьютере. Нажмите 'Установить' после генерации."
-        elif self.is_mac:
-            return "MobaXterm работает только на Windows:\n1. Сгенерируйте ключ\n2. Сохраните файл .mxtpro\n3. Передайте другу на Windows"
-        else:
-            return "MobaXterm работает только на Windows. Сгенерируйте ключ и используйте на Windows"
-    #
+        return "MobaXterm работает только на Windows:\n1. Сгенерируйте ключ\n2. Сохраните файл .mxtpro\n3. Используйте на Windows"
+    
     # ============================================================================
     # ОБРАБОТЧИКИ СОБЫТИЙ
     # ============================================================================
-    #
+    
     def update_status(self, message, color=None):
         """Обновление статуса"""
         if color is None:
-            color = "#4CAF50" if self.is_windows else "#FF9800"
+            color = self.styles['success'] if self._is_windows else self.styles['warning']
         
         self.status_text.value = message
         self.status_text.color = color
         self.page.update()
     
-    def show_progress(self, show=True):
-        """Показать/скрыть индикатор"""
-        self.progress_ring.visible = show
+    def show_snackbar(self, message, bgcolor=None):
+        """Показать snackbar-уведомление"""
+        if bgcolor is None:
+            bgcolor = self.styles['accent']
+        
+        self.page.snack_bar = ft.SnackBar(
+            content=ft.Text(message),
+            bgcolor=bgcolor,
+            duration=3000,
+        )
+        self.page.snack_bar.open = True
         self.page.update()
     
     def validate_fields(self):
@@ -522,65 +487,65 @@ class MobaXtermGeneratorApp:
         username = self.username_field.value.strip()
         if not username:
             errors.append("Имя пользователя не может быть пустым")
-            self.username_field.border_color = "#F44336"
+            self.username_field.border_color = self.styles['error']
         else:
-            self.username_field.border_color = "#00BCD4"
+            self.username_field.border_color = self.styles['accent']
         
         # Проверка типа лицензии
         license_type = self.license_type_dropdown.value
         if not license_type:
             errors.append("Выберите тип лицензии")
-            self.license_type_dropdown.border_color = "#F44336"
+            self.license_type_dropdown.border_color = self.styles['error']
         else:
-            self.license_type_dropdown.border_color = "#00BCD4"
+            self.license_type_dropdown.border_color = self.styles['accent']
         
         # Проверка версии
         version_text = self.version_field.value.strip()
         if not version_text:
             errors.append("Версия не может быть пустой")
-            self.version_field.border_color = "#F44336"
+            self.version_field.border_color = self.styles['error']
         else:
             # Проверка формата версии
             if '.' in version_text:
                 parts = version_text.split('.')
                 if len(parts) != 2:
                     errors.append("Неверный формат версии. Используйте: X.X")
-                    self.version_field.border_color = "#F44336"
+                    self.version_field.border_color = self.styles['error']
                 else:
                     try:
                         int(parts[0])
                         int(parts[1])
-                        self.version_field.border_color = "#00BCD4"
+                        self.version_field.border_color = self.styles['accent']
                     except ValueError:
                         errors.append("Версия должна содержать только цифры")
-                        self.version_field.border_color = "#F44336"
+                        self.version_field.border_color = self.styles['error']
             else:
                 try:
                     int(version_text)
-                    self.version_field.border_color = "#00BCD4"
+                    self.version_field.border_color = self.styles['accent']
                 except ValueError:
                     errors.append("Версия должна быть числом")
-                    self.version_field.border_color = "#F44336"
+                    self.version_field.border_color = self.styles['error']
         
         # Проверка количества
         count_text = self.user_count_field.value.strip()
         if not count_text:
             errors.append("Количество лицензий не может быть пустым")
-            self.user_count_field.border_color = "#F44336"
+            self.user_count_field.border_color = self.styles['error']
         else:
             try:
                 count = int(count_text)
                 if count < 1:
                     errors.append("Количество должно быть больше 0")
-                    self.user_count_field.border_color = "#F44336"
+                    self.user_count_field.border_color = self.styles['error']
                 elif count > 1000:
                     errors.append("Количество не может быть больше 1000")
-                    self.user_count_field.border_color = "#F44336"
+                    self.user_count_field.border_color = self.styles['error']
                 else:
-                    self.user_count_field.border_color = "#00BCD4"
+                    self.user_count_field.border_color = self.styles['accent']
             except ValueError:
                 errors.append("Количество должно быть числом")
-                self.user_count_field.border_color = "#F44336"
+                self.user_count_field.border_color = self.styles['error']
         
         return errors
     
@@ -592,30 +557,19 @@ class MobaXtermGeneratorApp:
         if errors:
             # Показываем ошибки через snackbar
             error_message = "Ошибки в заполнении:\n" + "\n".join([f"• {error}" for error in errors])
-            self.show_snackbar(error_message, "#F44336")
-            self.update_status("❌ Исправьте ошибки в полях", "#F44336")
-            self.page.update()
+            self.show_snackbar(error_message, self.styles['error'])
+            self.update_status("❌ Исправьте ошибки в полях", self.styles['error'])
             return
         
         # Все поля корректны, генерируем ключ
         self.generate_key()
     
-    def show_snackbar(self, message, bgcolor="#00BCD4"):
-        """Показать snackbar-уведомление"""
-        self.page.snack_bar = ft.SnackBar(
-            content=ft.Text(message),
-            bgcolor=bgcolor,
-            duration=3000,
-        )
-        self.page.snack_bar.open = True
-        self.page.update()
-    
     def generate_key(self):
         """Генерация ключа после проверки полей"""
         try:
-            self.show_progress(True)
+            # Временно отключаем кнопку
             self.generate_btn.disabled = True
-            self.update_status("Генерация ключа...", "#FF9800")
+            self.update_status("Генерация ключа...", self.styles['warning'])
             self.page.update()
             
             # Получаем данные (уже проверенные)
@@ -635,7 +589,7 @@ class MobaXtermGeneratorApp:
             # Количество лицензий
             user_count = int(self.user_count_field.value.strip())
             
-            # Генерация
+            # Генерация (лёгкая операция - без прогресса)
             key = LicenseGenerator.generate(
                 license_type, 
                 username, 
@@ -649,25 +603,21 @@ class MobaXtermGeneratorApp:
             
             # Обновляем информацию
             self.file_info_text.value = f"Ключ сгенерирован ({len(key)} символов)"
-            self.file_info_text.color = "#4CAF50"
+            self.file_info_text.color = self.styles['success']
             
-            # Статус в зависимости от ОС
-            if self.is_windows:
-                status_msg = "✅ Ключ готов! Нажмите 'Установить'"
-            else:
-                status_msg = "✅ Ключ готов! Сохраните файл"
+            # Статус
+            status_msg = "✅ Ключ готов!" + (" Используйте на Windows" if not self._is_windows else "")
+            self.update_status(status_msg, self.styles['success'])
             
-            self.update_status(status_msg, "#4CAF50")
-            self.show_progress(False)
+            # Включаем кнопку обратно
             self.generate_btn.disabled = False
             
             # Уведомление
-            self.show_snackbar("✅ Лицензионный ключ сгенерирован!", "#00BCD4")
+            self.show_snackbar("✅ Лицензионный ключ сгенерирован!", self.styles['accent'])
             
         except Exception as ex:
-            self.show_snackbar(f"❌ Ошибка генерации: {str(ex)}", "#F44336")
-            self.update_status(f"❌ Ошибка генерации", "#F44336")
-            self.show_progress(False)
+            self.show_snackbar(f"❌ Ошибка генерации: {str(ex)}", self.styles['error'])
+            self.update_status(f"❌ Ошибка генерации", self.styles['error'])
             self.generate_btn.disabled = False
         
         self.page.update()
@@ -675,20 +625,20 @@ class MobaXtermGeneratorApp:
     def copy_key(self, e):
         """Копирование ключа"""
         if not self.generated_key:
-            self.show_snackbar("⚠️ Сначала сгенерируйте ключ", "#FF9800")
-            self.update_status("⚠️ Сначала сгенерируйте ключ", "#FF9800")
+            self.show_snackbar("⚠️ Сначала сгенерируйте ключ", self.styles['warning'])
+            self.update_status("⚠️ Сначала сгенерируйте ключ", self.styles['warning'])
             return
         
         self.page.set_clipboard(self.generated_key)
-        self.update_status("✅ Ключ скопирован", "#2196F3")
-        self.show_snackbar("✅ Скопировано в буфер обмена", "#2196F3")
+        self.update_status("✅ Ключ скопирован", self.styles['info'])
+        self.show_snackbar("✅ Скопировано в буфер обмена", self.styles['info'])
         self.page.update()
     
     def save_license(self, e):
         """Сохранение лицензии"""
         if not self.generated_key:
-            self.show_snackbar("⚠️ Сначала сгенерируйте ключ", "#FF9800")
-            self.update_status("⚠️ Сначала сгенерируйте ключ", "#FF9800")
+            self.show_snackbar("⚠️ Сначала сгенерируйте ключ", self.styles['warning'])
+            self.update_status("⚠️ Сначала сгенерируйте ключ", self.styles['warning'])
             return
         
         try:
@@ -697,82 +647,18 @@ class MobaXtermGeneratorApp:
             if success:
                 file_size = os.path.getsize(self.license_file)
                 self.file_info_text.value = f"Файл сохранён ({file_size} байт)"
-                self.file_info_text.color = "#4CAF50"
+                self.file_info_text.color = self.styles['success']
                 
-                if self.is_windows:
-                    status_msg = "✅ Файл готов к установке"
-                else:
-                    status_msg = "✅ Файл готов для передачи"
-                
-                self.update_status(status_msg, "#4CAF50")
-                self.show_snackbar(f"✅ Файл сохранён: {self.license_file}", "#00BCD4")
+                status_msg = "✅ Файл сохранён" + (" на рабочий стол" if not self._is_windows else "")
+                self.update_status(status_msg, self.styles['success'])
+                self.show_snackbar(f"✅ Файл сохранён: {self.license_file}", self.styles['accent'])
             else:
-                self.show_snackbar(f"❌ Ошибка сохранения: {message}", "#F44336")
-                self.update_status(f"❌ Ошибка сохранения", "#F44336")
+                self.show_snackbar(f"❌ Ошибка сохранения: {message}", self.styles['error'])
+                self.update_status(f"❌ Ошибка сохранения", self.styles['error'])
                 
         except Exception as ex:
-            self.show_snackbar(f"❌ Не удалось сохранить файл: {str(ex)}", "#F44336")
-            self.update_status(f"❌ Ошибка: {str(ex)}", "#F44336")
-        
-        self.page.update()
-    
-    def install_license(self, e):
-        """Установка лицензии (только Windows)"""
-        if not self.is_windows:
-            return
-        
-        if not os.path.exists(self.license_file):
-            self.show_snackbar("❌ Сначала сохраните файл лицензии", "#FF9800")
-            self.update_status("❌ Сначала сохраните файл", "#FF9800")
-            return
-        
-        # Поиск MobaXterm
-        moba_paths = [
-            r"C:\Program Files (x86)\Mobatek\MobaXterm",
-            r"C:\Program Files\Mobatek\MobaXterm",
-            r"C:\Mobatek\MobaXterm",
-        ]
-        
-        moba_path = None
-        for path in moba_paths:
-            if os.path.exists(path):
-                moba_path = path
-                break
-        
-        if not moba_path:
-            self.show_snackbar("❌ MobaXterm не найден. Установите MobaXterm", "#F44336")
-            self.update_status("❌ MobaXterm не найден", "#F44336")
-            return
-        
-        try:
-            dest_file = os.path.join(moba_path, self.license_file)
-            shutil.copy2(self.license_file, dest_file)
-            
-            self.update_status(f"✅ Установлено в MobaXterm", "#4CAF50")
-            self.show_snackbar("✅ Лицензия установлена! Перезапустите MobaXterm", "#4CAF50")
-            
-        except PermissionError:
-            self.show_snackbar("❌ Запустите программу от имени администратора", "#F44336")
-            self.update_status("❌ Запустите от Администратора", "#F44336")
-        except Exception as ex:
-            self.show_snackbar(f"❌ Не удалось установить лицензию: {str(ex)}", "#F44336")
-            self.update_status(f"❌ Ошибка: {str(ex)}", "#F44336")
-        
-        self.page.update()
-    
-    def check_license_file(self, e):
-        """Проверка файла"""
-        if os.path.exists(self.license_file):
-            file_size = os.path.getsize(self.license_file)
-            self.file_info_text.value = f"Файл существует ({file_size} байт)"
-            self.file_info_text.color = "#4CAF50"
-            self.update_status("✅ Файл проверен", "#4CAF50")
-            self.show_snackbar("✅ Файл существует", "#4CAF50")
-        else:
-            self.file_info_text.value = "Файл не найден"
-            self.file_info_text.color = "#F44336"
-            self.update_status("❌ Файл не найден", "#F44336")
-            self.show_snackbar("❌ Файл не найден", "#F44336")
+            self.show_snackbar(f"❌ Не удалось сохранить файл: {str(ex)}", self.styles['error'])
+            self.update_status(f"❌ Ошибка: {str(ex)}", self.styles['error'])
         
         self.page.update()
     
@@ -781,39 +667,37 @@ class MobaXtermGeneratorApp:
         current_dir = os.getcwd()
         
         try:
-            if self.is_windows:
+            if platform.system() == "Windows":
                 os.startfile(current_dir)
-                self.update_status("📂 Папка открыта", "#4CAF50")
-                self.show_snackbar("📂 Папка открыта", "#4CAF50")
-            elif self.is_mac:
+                self.update_status("📂 Папка открыта", self.styles['success'])
+                self.show_snackbar("📂 Папка открыта", self.styles['success'])
+            elif platform.system() == "Darwin":
                 import subprocess
                 subprocess.run(['open', current_dir])
-                self.update_status("📂 Папка открыта в Finder", "#4CAF50")
-                self.show_snackbar("📂 Папка открыта в Finder", "#4CAF50")
-            elif self.is_linux:
+                self.update_status("📂 Папка открыта в Finder", self.styles['success'])
+                self.show_snackbar("📂 Папка открыта в Finder", self.styles['success'])
+            elif platform.system() == "Linux":
                 import subprocess
                 subprocess.run(['xdg-open', current_dir])
-                self.update_status("📂 Папка открыта", "#4CAF50")
-                self.show_snackbar("📂 Папка открыта", "#4CAF50")
+                self.update_status("📂 Папка открыта", self.styles['success'])
+                self.show_snackbar("📂 Папка открыта", self.styles['success'])
             else:
-                self.show_snackbar("❌ Ваша ОС не поддерживается", "#F44336")
-                self.update_status("❌ Не поддерживается", "#F44336")
+                self.show_snackbar("❌ Ваша ОС не поддерживается", self.styles['error'])
+                self.update_status("❌ Не поддерживается", self.styles['error'])
         except Exception as ex:
-            self.show_snackbar(f"❌ Не удалось открыть папку: {str(ex)}", "#F44336")
-            self.update_status(f"❌ Ошибка: {str(ex)}", "#F44336")
+            self.show_snackbar(f"❌ Не удалось открыть папку: {str(ex)}", self.styles['error'])
+            self.update_status(f"❌ Ошибка: {str(ex)}", self.styles['error'])
         
         self.page.update()
-#
+
+
 # ============================================================================
 # ЗАПУСК
 # ============================================================================
-#
 def main(page: ft.Page):
     """Главная функция"""
     # Настройки окна
     page.window_center()
-    
-    # Включаем прокрутку для всей страницы
     page.scroll = ft.ScrollMode.AUTO
     
     # Создаем приложение
